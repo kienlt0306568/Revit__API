@@ -1,41 +1,38 @@
 ﻿
 using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
+using System.Collections;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Text;
 using System.Windows.Forms;
+using System.Xml.Linq;
 namespace ClassLibrary1
 {
     [Autodesk.Revit.Attributes.Transaction(Autodesk.Revit.Attributes.TransactionMode.Manual)]
     public class Class1 : IExternalCommand
     {
-        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        public Result Execute(ExternalCommandData commandData,
+    ref string message, ElementSet elements)
         {
-            UIDocument uidoc = commandData.Application.ActiveUIDocument;
-            ICollection<ElementId> selectedIds = uidoc.Selection.GetElementIds();
-            Autodesk.Revit.UI.TaskDialog.Show("Revit", "Số lượng đối tượng được chọn:" + selectedIds.Count.ToString());
-            ICollection<ElementId> selectedWallIds = new List<ElementId>();
-            foreach (ElementId id in selectedIds)
-            {
-                Element elements1 = uidoc.Document.GetElement(id);
-                if (elements is Wall)
-                {
-                    selectedWallIds.Add(id);
+           
+            Document doc = commandData.Application.ActiveUIDocument.Document;
+            FilteredElementCollector collector = new FilteredElementCollector(doc);
 
-                }
-                // Set the created element set as current select element set.
-                uidoc.Selection.SetElementIds(selectedWallIds);
-                if (0 != selectedWallIds.Count)
-                {
-                    Autodesk.Revit.UI.TaskDialog.Show("Revit", selectedWallIds.Count.ToString() + " Đối tượng Tường đã được chọn!");
-                }
-                else
-                {
-                    Autodesk.Revit.UI.TaskDialog.Show("Revit", "Không có đối tượng tường nào được chọn!");
-                }
-                
+            ElementCategoryFilter filter = new ElementCategoryFilter(BuiltInCategory.OST_Materials);
+            IList<Element> matList = collector.WherePasses(filter).WhereElementIsNotElementType().ToElements();
+            StringBuilder result = new StringBuilder();
+            foreach (Element ele in matList)
+            {
+                result.AppendLine(ele.Category.Name + "\t" + ele.Name + "\t" + ele.Id);
             }
+            MessageBox.Show("tat ca cac vat lieu trong du an la " + result.ToString());
             return Result.Succeeded;
         }
+
+            
+        }
     }
-}
+
 
