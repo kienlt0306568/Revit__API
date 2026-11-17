@@ -1,8 +1,15 @@
 ﻿
 using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
+using System.Collections;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Text;
 using System.Windows.Forms;
+using System.Xml.Linq;
+using Autodesk.Revit.DB.Architecture;
+
 namespace ClassLibrary1
 {
     [Autodesk.Revit.Attributes.Transaction(Autodesk.Revit.Attributes.TransactionMode.Manual)]
@@ -11,31 +18,43 @@ namespace ClassLibrary1
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             UIDocument uidoc = commandData.Application.ActiveUIDocument;
-            ICollection<ElementId> selectedIds = uidoc.Selection.GetElementIds();
-            Autodesk.Revit.UI.TaskDialog.Show("Revit", "Số lượng đối tượng được chọn:" + selectedIds.Count.ToString());
-            ICollection<ElementId> selectedWallIds = new List<ElementId>();
-            foreach (ElementId id in selectedIds)
-            {
-                Element elements1 = uidoc.Document.GetElement(id);
-                if (elements is Wall)
-                {
-                    selectedWallIds.Add(id);
+            Document doc = uidoc.Document;
+            FilteredElementCollector collector = new FilteredElementCollector(doc);
+            //ElementCategoryFilter filter = new ElementCategoryFilter(BuiltInCategory.OST_StructuralColumns);
+            ElementCategoryFilter filter = new ElementCategoryFilter(BuiltInCategory.OST_Walls);
 
-                }
-                // Set the created element set as current select element set.
-                uidoc.Selection.SetElementIds(selectedWallIds);
-                if (0 != selectedWallIds.Count)
-                {
-                    Autodesk.Revit.UI.TaskDialog.Show("Revit", selectedWallIds.Count.ToString() + " Đối tượng Tường đã được chọn!");
-                }
-                else
-                {
-                    Autodesk.Revit.UI.TaskDialog.Show("Revit", "Không có đối tượng tường nào được chọn!");
-                }
-                
+            IList<Element> columnList = collector.WherePasses(filter).WhereElementIsNotElementType().ToElements();
+            //StringBuilder output = new StringBuilder("Tất cả các Structural Column trong BIM model :"+columnList.Count()+"\r\n");
+            StringBuilder output = new StringBuilder("Tất cả các Walls trong BIM model :" + columnList.Count() + "\r\n");
+
+            foreach (Element e1 in columnList)
+            {
+                string elemName = e1.Id.ToString() + "\n";
+                ElementType type = doc.GetElement(e1.GetTypeId()) as ElementType;
+                AnalyticalMember analyticalMember =
+      doc.GetElement(e1.Id) as AnalyticalMember;
+
+                Parameter h1 = type.LookupParameter("Width");
+                double hh1 = ChangeUnitFeetToMillimeter(h1.AsDouble());
+                //Parameter b = type.LookupParameter("b");
+                //double bb1 = ChangeUnitFeetToMillimeter(b.AsDouble());
+                elemName = elemName + "Width = " + hh1.ToString() + "\n";
+                //elemName = elemName + "b = " + bb1.ToString() + "\n";
+                output.Append(elemName);
+                output.AppendLine();
             }
+            MessageBox.Show(output.ToString());
             return Result.Succeeded;
         }
+        static double ChangeUnitFeetToMillimeter(double Value)
+        {
+            double value;
+            value = Math.Round(UnitUtils.Convert(Value, DisplayUnitType.DUT_DECIMAL_FEET, DisplayUnitType.DUT_MILLIMETERS), 2);
+            return value;
+        }
+
+
     }
 }
+
 
